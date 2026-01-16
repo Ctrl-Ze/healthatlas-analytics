@@ -1,0 +1,67 @@
+services:
+  themis:
+    container_name: themis
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: themis
+      KAFKA_BROKER: kafka:9092
+      DISABLE_KAFKA: "true"
+    ports:
+      - "8083:8080"
+    networks:
+      - healthatlas
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: themis-timescale
+    environment:
+      POSTGRES_DB: themis
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    # ports:
+    #   - "5432:5432"
+    networks:
+      - healthatlas
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: themis-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@healthatlas.dev
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    networks:
+      - healthatlas
+    depends_on:
+      - timescaledb
+
+networks:
+  healthatlas:
+    external: true
+
+volumes:
+  timescale_data:

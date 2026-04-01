@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/Ctrl-Ze/healthatlas-analytics/internal/consumer"
 	"github.com/Ctrl-Ze/healthatlas-analytics/internal/db"
-	"github.com/Ctrl-Ze/healthatlas-analytics/internal/kafka"
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 	if err := db.RunMigrations(dbURL); err != nil {
 		log.Fatalf("Migration error: %v", err)
 	}
-	
+
 	pool, err := db.NewPool(ctx, dbURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to DB: %v", err)
@@ -26,16 +26,17 @@ func main() {
 	defer pool.Close()
 
 	if os.Getenv("DISABLE_KAFKA") != "true" {
-		consumer := kafka.NewConsumer(
-		[]string{os.Getenv("KAFKA_BROKER")},
-		"blood-test.recorded",
-		"themis-group",
-		// TODO can I pass pool for storing results?
-	)
-	consumer.Start(ctx)
-		
+		repo := db.NewRepository(pool)
+		c := consumer.New(
+			[]string{os.Getenv("KAFKA_BROKER")},
+			"blood-test.recorded",
+			"themis-group",
+			repo,
+		)
+		c.Start(ctx)
+
 	}
-	
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, e *http.Request) {

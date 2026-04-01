@@ -10,8 +10,8 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_NAME: themis
-      KAFKA_BROKER: kafka:9092
-      DISABLE_KAFKA: "true"
+      KAFKA_BROKER: athena-kafka:29092
+      DISABLE_KAFKA: "false"
     ports:
       - "8083:8080"
     networks:
